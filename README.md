@@ -10,7 +10,7 @@ When I first started learning Full Stack JS development, I could barely understa
 It was only a matter of time until I wrapped my head around the difference/relation between the client and the server, and that they are two totally different things.
 When you are browsing the internet with your own computer searching for news or whatever, you are always being the client. The server is just another computer waiting for you to ask for something so they can grab it for you. Think of it as a party. If someone invites you to a party, as an atendee, you are a client. The server in this analogy is the bartender. If you need a drink or food, bartenders are the ones who will serve you (servers).
 
-## You need a drink? you gotta sk for it!
+## You need a drink 🍺? you gotta ask for it!
 
 In such parties, you can imagine how busy the servers can be. If you need something, you (the client) have to go to the bartender (the server) and ask for what you need. The server then can go and get you what you asked for.
 The most common protocol used for communications between clients and servers is HTTP. HTTP is a request-response based communication. If the client needs a certain piece of data, it has to send a REQUEST (req) to the server. The server then reads the req and sends a RESPONSE (res) containing the data the client asked for. This is usually referred to as a _handshake_. The server can pretty much do nothing if the client does not initiate the response.
@@ -111,6 +111,96 @@ io.listen(5000, () => {
 Great! Now our server can handle real time data transfers and establish _bidirectional connections_. Lets take a moment to explain things here.
 `socket.io` is a javascript library for ws connections. There is a lot to it but lets understand it as simply as possible. After establishing the bidirectional connection. The user/s subscribe to named channels. The server later can choose to send certain data to certain channels. In the example above, we made a channel called `"chat"`. Now once we work on the client in a bit, we will be able to send data to this channel. Once we do, the data first goes to the server. then the server emits (sends; _io.emit('chat', data)_) the same data again to the channel `chat`. This way not only the one who sent the data can receive it, but all those subscribing to the `chat` channel.
 
-Socket.io makes it super easy to establish WS connection. As you can see, we prepared a chat server with just a few lines of code. Now lets see how this looks like on the client side. We will make it just as simple and create a minimal react chat app for the client.
+Socket.io makes it super easy to establish WS connections. As you can see, we prepared a chat server with just a few lines of code. Now lets see how this looks like on the client side. We will make it just as simple and create a minimal react chat app for the client.
 
-## Socket.io on the client side.
+## Socket.io on the client side (React).
+
+Lets first generate the usual React template and add the needed modules.
+
+ - Go to your terminal
+ - Make a new directory and cd into it (`mkdir client; cd client`)
+ - Run `npm create-react-app my_app`
+ - (once this is done)
+ - Run `npm i socket.io-client`
+
+After you run these commands in order, open your React app and lets edit `/src/App.js`:
+
+```javascript
+import React, { useState } from 'react';  // do NOT forget to import useState
+import logo from './logo.svg';
+import './App.css';
+
+//Import Socket.io
+import openSocket from 'socket.io-client';
+
+
+function App() {
+  // this is where we will be storing the message the user can create before we send it
+  const [newMessage, setMessage] = useState('')
+
+  // these are where all the messages will be.
+  // It will first be an empty array but we will 
+  // fill it up everytime the server sends us something
+  const [allMessages, setAllMessages] = useState([])
+  
+  // Establish a WS connection with the server 
+  const socket = openSocket('http://localhost:5000');  // <-- make sure the port is the same
+  
+  // this subscribes to the 'chat' channel
+  // Whenever there are new messages, we put them in the array hook.
+  socket.on('chat', (data) => {
+    setAllMessages([...allMessages, data])
+  })
+
+  // this function runs onClicking the send button
+  const sendMessage = () => {
+    console.log('SENT')
+    
+    // it emits the new message written by the user to the 'chat' channel
+    socket.emit('chat', newMessage);
+
+    // clear the message from the text input after sending
+    setMessage('')
+  }
+   
+  return (
+    <div className="App">
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <div>
+          <h2>Chat Messages</h2>
+          <div>
+            {/* This is where we will be displaying all the messages */}
+            {
+              allMessages.map(message => {
+                return <div>{message}</div>
+              })
+            }
+          </div>
+          <input onChange={(e) => setMessage(e.target.value)} placeholder="type your message .." />
+          <button onClick={() => sendMessage()}>↪</button>
+        </div>
+      </header>
+    </div>
+  );
+}
+
+export default App;
+```
+
+Sweet! This looks really simple and it will get the job done.
+All we did in this piece of code is:
+  - Establish a WS connection with our server
+  - Create a text input / `send message` button
+  - Display the messages in a `<div>`
+  - Send any new message to the server (which will resend it to the `chat` channel)
+  - Subscribe to the `chat` channel to get all the messages
+
+Amazing 🙂 Now if we run this, we should have a working chat app!
+go to the terminal and run `npm start`
+(make sure that your server is also running. Navigate to the server directory and run `node server.js`)
+
+After your React app runs, you should see at at `http://localhost:3000`. Try opening the same url in more than one tab and send messages from different tabs.
+You will see that all the tabs will update instantaneously.
+`Socket.io` makes WS connections incredibely simple. and they are proven to be more efficient on heavy loads. So if you are expecting a lot of traffic on the server, websocket connections manage just well.
+Notice that if you refresh the page, all the messages will be deleted. That is because your server is not storing any message. We have no database to write messages to or fetch old messages from. Our server simply acts as a bridge between users on our chat app.
